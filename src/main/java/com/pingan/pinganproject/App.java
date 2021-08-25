@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.log4j.Logger;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Cookie;
 import org.openqa.selenium.NoAlertPresentException;
@@ -26,6 +27,8 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 /**
  * App
@@ -36,9 +39,11 @@ public class App {
 	public static String newTab, userNameString, userPasswordString, browserAddress;
 	public static String cookieSting = "";
 	public static String polNo = "";
-	public static ArrayList<String> problemIdList = new ArrayList<>();
+	// public static ArrayList<String> problemIdList = new ArrayList<>();
 	public static HashMap<String, String> customerRecordMap = new HashMap<>();
 	public static int sleepTime = 2;
+	public static WebDriverWait webDriverWait;
+	private static Logger logger = Logger.getLogger(App.class);
 
 	public static void main(String[] args) throws Exception {
 		String webUrlString = "https://yl.pingan.com/#/qylogin";
@@ -49,19 +54,24 @@ public class App {
 		ChromeOptions options = new ChromeOptions();
 
 		options.setBinary(browserAddress);
-
 		try {
 			driver = new ChromeDriver(options);
 			driver.get(webUrlString);
 			Thread.sleep(2000);
+			webDriverWait = new WebDriverWait(driver, 1L);
+			webDriverWait.until(ExpectedConditions
+					.visibilityOfElementLocated(By.xpath("/html/body/div[1]/section/main/div/div/div/div[2]/iframe")));
+
+			Thread.sleep(2000);
 			WebElement iframElement = driver
 					.findElement(By.xpath("/html/body/div[1]/section/main/div/div/div/div[2]/iframe"));
+
 			driver.switchTo().frame(iframElement);
 			driver.findElement(By.id("userName")).sendKeys(userNameString);
 			driver.findElement(By.id("passwordInput")).sendKeys(userPasswordString);
-			Thread.sleep(8000);
+			Thread.sleep(10000);
 			driver.findElement(By.id("submitButton")).click();
-
+			logger.info("已点击登录按钮，开始跳转.");
 			Thread.sleep(3000);
 			// Switch to new Window
 			switch_to_new_window();
@@ -94,8 +104,9 @@ public class App {
 						List<WebElement> certTrElementList = driver
 								.findElements(By.xpath("//form/table[3]/tbody[@id='items']/tr"));
 						String insureUrlPdf = "";
-						if (certTrElementList.size() > 2) {
+						logger.info("找到" + (certTrElementList.size() - 1) + "个凭证.");
 
+						if (certTrElementList.size() > 2) {
 							for (int i = 1; i < certTrElementList.size(); i++) {
 								if (driver.findElement(By.xpath("//form/table[3]/tbody[1]/tr[" + i + "]/td[7]/span"))
 										.getText().equalsIgnoreCase("缴费有效"))
@@ -106,48 +117,31 @@ public class App {
 								// insuredName : get the Chines name and convert to GBK
 								insureName = toGbkString(
 										driver.findElement(By.xpath("//*[@id='tdClientName" + i + "']")).getText());
+								logger.warn("找到凭证" + insureName);
 
 								insureUrlPdf = "https://pa-ssl.pingan.com/cspi-internet/org/pension/insuranceCertificateExportPdf.do?polNo="
 										+ polNo + "&insuredName=" + insureName + "&IdNo=" + idNo + "&certNo=" + certNo;
 
 								if (matchItemsList.size() > 1) {
 									download_pdf(insureUrlPdf, key + "_" + i);
-									System.out
-											.println("Downloaded file for " + idNo + " to " + key + "_" + i + ".pdf!");
+									logger.info("用户记录 " + idNo + " 的凭证已经下载到 " + key + "_" + i + ".pdf!");
 								} else {
 									download_pdf(insureUrlPdf, key);
-									System.out.println("Downloaded file for " + idNo + " to " + key + ".pdf!");
+									logger.info("用户记录 " + idNo + " 的凭证已经下载到 " + key + ".pdf!");
 								}
 							}
-
-//							String certNo1Status = driver
-//									.findElement(By.xpath("//form/table[3]/tbody[1]/tr[1]/td[7]/span")).getText();
-//							String certNo2Status = driver
-//									.findElement(By.xpath("//form/table[3]/tbody[1]/tr[2]/td[7]/span")).getText();
-//							if (certNo1Status.equalsIgnoreCase("缴费有效")) {
-//								certNo = driver.findElement(By.xpath("//*[@id=\"tdCertNo1\"]")).getText();
-//								// insuredName : get the Chines name and convert to GBK
-//								insureName = toGbkString(
-//										driver.findElement(By.xpath("//*[@id=\"tdClientName1\"]")).getText());
-//
-//							} else if (certNo2Status.equalsIgnoreCase("缴费有效")) {
-//								certNo = driver.findElement(By.xpath("//*[@id=\"tdCertNo2\"]")).getText();
-//								// insuredName : get the Chines name and convert to GBK
-//								insureName = toGbkString(
-//										driver.findElement(By.xpath("//*[@id=\"tdClientName2\"]")).getText());
-//							}
-//							;
 						} else {
 							certNo = driver.findElement(By.xpath("//*[@id=\"tdCertNo1\"]")).getText();
 							// insuredName : get the Chines name and convert to GBK
 							insureName = toGbkString(
 									driver.findElement(By.xpath("//*[@id=\"tdClientName1\"]")).getText());
+							logger.info("找到凭证" + insureName);
 
 							insureUrlPdf = "https://pa-ssl.pingan.com/cspi-internet/org/pension/insuranceCertificateExportPdf.do?polNo="
 									+ polNo + "&insuredName=" + insureName + "&IdNo=" + idNo + "&certNo=" + certNo;
 
 							download_pdf(insureUrlPdf, key);
-							System.out.println("Downloaded file for " + idNo + " to " + key + ".pdf!");
+							logger.info("用户记录凭证 " + idNo + " 下载到 " + key + ".pdf!");
 
 						}
 					} catch (Exception e) {
@@ -155,13 +149,13 @@ public class App {
 					}
 				} catch (NoSuchElementException e) {
 					System.out.println("Fail to query customer: " + key + "," + idNo + "!");
-					problemIdList.add(customerRecordMap.get(key));
+					logger.error("找不到记录" + key + "相关凭证。");
 					negative_to_check();
 				}
 			}
 
 			// Start to try to download the pdf
-			System.out.println("Finished Download Job !");
+			logger.info("完成了所有凭证的下载任务 !");
 			Thread.sleep(2000);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -172,6 +166,7 @@ public class App {
 	}
 
 	private static void initial_config_file() throws Exception, FileNotFoundException {
+		logger.info("开始初始化文件.");
 		ArrayList<String> arrayList = new ArrayList<>();
 //Read configure from file/config.txt
 		File configFile = new File("file/config.txt");
@@ -195,6 +190,9 @@ public class App {
 				polNo = record.split(",")[2];
 				browserAddress = record.split(",")[3];
 				sleepTime = Integer.valueOf(record.split(",")[4]);
+				logger.info("登录用户名为： " + userNameString);
+				logger.info("用户密码为： " + userPasswordString);
+				logger.info("保单单号为： " + polNo);
 				i++;
 			} else
 				customerRecordMap.put(record.split(",")[0], record.split(",")[1]);
@@ -208,7 +206,7 @@ public class App {
 		}
 	}
 
-	private static void download_pdf(String insureUrlPdf, String customerId) throws IOException {
+	private static void download_pdf(String insureUrlPdf, String key) throws IOException {
 		URL url = new URL(insureUrlPdf);
 		HttpURLConnection conn = (HttpURLConnection) url.openConnection();
 		conn.setRequestMethod("GET");
@@ -225,7 +223,7 @@ public class App {
 		if (!saveDir.exists())
 			saveDir.mkdir();
 
-		File file = new File(saveDir + File.separator + customerId + ".pdf");
+		File file = new File(saveDir + File.separator + key + ".pdf");
 		FileOutputStream fileOut = new FileOutputStream(file);
 		DataOutputStream bos = new DataOutputStream(fileOut);
 		while ((len = inputStream.read(buffer, 0, 1024)) != -1) {
@@ -234,6 +232,8 @@ public class App {
 		bos.close();
 		bis.close();
 		conn.disconnect();
+		logger.info("凭证" + key + ".pdf  已下载.");
+
 	}
 
 	private static void get_cookies() {
@@ -244,6 +244,7 @@ public class App {
 	}
 
 	private static void negative_to_check() throws InterruptedException {
+		logger.info("前往点击保险凭证.");
 		Thread.sleep(1000);
 		driver.switchTo().defaultContent();
 		driver.switchTo().frame(driver.findElement(By.xpath("//*[@id=\"EM_PAGE\"]")));
@@ -283,7 +284,8 @@ public class App {
 		driver.findElement(By.xpath("//*[@id=\"c\"]/form/table[2]/tbody/tr[1]/td[3]/input")).click();
 	}
 
-	private static void switch_to_new_window() {
+	private static void switch_to_new_window() throws InterruptedException {
+		Thread.sleep(3000);
 		Set<String> handleSet = driver.getWindowHandles();
 		String currentString = driver.getWindowHandle();
 		handleSet.remove(currentString);

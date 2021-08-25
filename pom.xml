@@ -4,7 +4,7 @@
 
   <groupId>com.pingan</groupId>
   <artifactId>pinganproject</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.0.3-SNAPSHOT</version>
   <packaging>jar</packaging>
 
   <name>pinganproject</name>
@@ -37,5 +37,13 @@
     <artifactId>commons-httpclient</artifactId>
     <version>3.1</version>
 </dependency>
+<!-- https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core -->
+<dependency>
+    <groupId>log4j</groupId>
+    <artifactId>log4j</artifactId>
+    <version>1.2.14</version>
+    <scope>provided</scope>
+</dependency>
+
   </dependencies>
 </project>
